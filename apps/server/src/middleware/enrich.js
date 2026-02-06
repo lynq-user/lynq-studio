@@ -45,12 +45,14 @@ function enrich(event, context) {
   }
 
   // ─── 3. UTM Parsing ───────────────────────
+  // Tracker session-level attribution gönderiyorsa onu kullan,
+  // yoksa URL query'den parse et
   const utmParams = parseUTM(enriched.url_query);
-  enriched.utm_source = utmParams.utm_source;
-  enriched.utm_medium = utmParams.utm_medium;
-  enriched.utm_campaign = utmParams.utm_campaign;
-  enriched.utm_term = utmParams.utm_term;
-  enriched.utm_content = utmParams.utm_content;
+  enriched.utm_source = enriched.utm_source || utmParams.utm_source;
+  enriched.utm_medium = enriched.utm_medium || utmParams.utm_medium;
+  enriched.utm_campaign = enriched.utm_campaign || utmParams.utm_campaign;
+  enriched.utm_term = enriched.utm_term || utmParams.utm_term;
+  enriched.utm_content = enriched.utm_content || utmParams.utm_content;
 
   // ─── 4. GeoIP ──────────────────────────────
   const geo = geoip.lookup(context.ip);

@@ -94,12 +94,41 @@
     try {
       sessionStorage.setItem(SESSION_ID_KEY, sessionId);
       sessionStorage.setItem(SESSION_ID_KEY + '_t', String(lastActivity));
+
+      // ─── Session-level attribution ──────────
+      // Session başladığında UTM ve referrer'ı kaydet.
+      // Sonraki tüm event'lere bu ilk değerler eklenir.
+      // Böylece purchase event'inde bile orijinal trafik kaynağını görürsün.
+      var params = new URLSearchParams(location.search);
+      var attribution = {
+        ref: document.referrer || '',
+        src: params.get('utm_source') || '',
+        med: params.get('utm_medium') || '',
+        cam: params.get('utm_campaign') || '',
+        trm: params.get('utm_term') || '',
+        cnt: params.get('utm_content') || '',
+        gclid: params.get('gclid') || '',
+        fbclid: params.get('fbclid') || '',
+        landing: location.pathname + location.search
+      };
+      sessionStorage.setItem('_lynq_attr', JSON.stringify(attribution));
     } catch (e) { /* */ }
     return true; // yeni session
   }
 
+  // Session'ın orijinal attribution verilerini oku
+  function getAttribution() {
+    try {
+      var stored = sessionStorage.getItem('_lynq_attr');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) { return null; }
+  }
+
   // ─── Event Gönderimi ────────────────────────
   function send(eventType, eventName, props) {
+    // Session attribution'ı al (orijinal trafik kaynağı)
+    var attr = getAttribution();
+
     var payload = {
       website_id: websiteId,
       event_type: eventType,
@@ -109,12 +138,22 @@
       url_path: location.pathname,
       url_query: location.search,
       page_title: document.title || '',
-      referrer: document.referrer || '',
+      // Referrer: mevcut sayfa referrer'ı VEYA session'ın orijinal referrer'ı
+      referrer: document.referrer || (attr ? attr.ref : ''),
       screen: screen.width + 'x' + screen.height,
       language: navigator.language || '',
       timestamp: new Date().toISOString(),
       properties: props ? JSON.stringify(props) : '{}'
     };
+
+    // Session-level attribution — her event'e orijinal kaynak bilgisi ekle
+    if (attr) {
+      if (attr.src) payload.utm_source = attr.src;
+      if (attr.med) payload.utm_medium = attr.med;
+      if (attr.cam) payload.utm_campaign = attr.cam;
+      if (attr.trm) payload.utm_term = attr.trm;
+      if (attr.cnt) payload.utm_content = attr.cnt;
+    }
 
     var body = JSON.stringify(payload);
 
@@ -248,11 +287,10 @@
     getSession();
     data = data || {};
 
-    // Event tipini belirle
     var isEcom = ECOM_EVENTS.indexOf(name) !== -1;
     var eventType = isEcom ? name : 'custom';
+    var attr = getAttribution();
 
-    // Payload oluştur
     var payload = {
       website_id: websiteId,
       event_type: eventType,
@@ -262,11 +300,20 @@
       url_path: location.pathname,
       url_query: location.search,
       page_title: document.title || '',
-      referrer: document.referrer || '',
+      referrer: document.referrer || (attr ? attr.ref : ''),
       screen: screen.width + 'x' + screen.height,
       language: navigator.language || '',
       timestamp: new Date().toISOString()
     };
+
+    // Session-level attribution — orijinal kaynak bilgisi
+    if (attr) {
+      if (attr.src) payload.utm_source = attr.src;
+      if (attr.med) payload.utm_medium = attr.med;
+      if (attr.cam) payload.utm_campaign = attr.cam;
+      if (attr.trm) payload.utm_term = attr.trm;
+      if (attr.cnt) payload.utm_content = attr.cnt;
+    }
 
     // E-commerce ve interaction alanlarını doğrudan payload'a ekle
     var knownFields = ECOM_FIELDS.concat(INTERACTION_FIELDS);

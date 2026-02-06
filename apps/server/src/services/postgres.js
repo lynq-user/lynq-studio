@@ -13,15 +13,19 @@ const { Pool } = require('pg');
  * PostgreSQL connection pool oluştur
  */
 function createPgPool() {
-  const pool = new Pool({
-    host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-    database: process.env.POSTGRES_DB || 'lynq_app',
-    user: process.env.POSTGRES_USER || 'lynq',
-    password: process.env.POSTGRES_PASSWORD || 'lynq_dev_password',
-    max: 10, // connection pool boyutu
-    idleTimeoutMillis: 30000
-  });
+  // DATABASE_URL varsa onu kullan (Neon/Railway), yoksa ayrı parametreler
+  const config = process.env.DATABASE_URL
+    ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 10 }
+    : {
+        host: process.env.POSTGRES_HOST || 'localhost',
+        port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+        database: process.env.POSTGRES_DB || 'lynq_app',
+        user: process.env.POSTGRES_USER || 'lynq',
+        password: process.env.POSTGRES_PASSWORD || 'lynq_dev_password',
+        max: 10
+      };
+
+  const pool = new Pool(config);
 
   pool.on('error', (err) => {
     console.error('PostgreSQL pool error:', err.message);

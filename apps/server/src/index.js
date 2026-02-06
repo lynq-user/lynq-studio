@@ -11,7 +11,8 @@
  *   - Bölüm 6.1: Proxy/ingestion layer kullan
  */
 
-require('dotenv').config({ path: '../../.env' });
+// Lokal'de .env dosyasını oku, production'da environment variable'lar kullanılır
+try { require('dotenv').config({ path: '../../.env' }); } catch(e) {}
 
 const Fastify = require('fastify');
 const cors = require('@fastify/cors');

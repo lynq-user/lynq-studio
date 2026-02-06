@@ -60,8 +60,8 @@ async function start() {
   const pgPool = createPgPool();
   const buffer = createBuffer(clickhouse);
 
-  // ClickHouse tablolarının varlığını kontrol et
-  await ensureClickHouseTables(clickhouse);
+  // ClickHouse tablolarının varlığını kontrol et (hata olursa bile server başlasın)
+  ensureClickHouseTables(clickhouse).catch(err => console.error('ClickHouse check failed:', err.message));
 
   // Service'leri request context'ine ekle
   app.decorate('clickhouse', clickhouse);

@@ -19,7 +19,7 @@ function createClickHouseClient() {
     config.tls = { rejectUnauthorized: true };
   }
 
-  console.log('ClickHouse connecting to:', host);
+  console.log('ClickHouse config:', { url: host, database: config.database, username: config.username, hasPassword: !!config.password, tls: !!config.tls });
   const client = createClient(config);
   return client;
 }

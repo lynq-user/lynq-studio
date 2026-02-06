@@ -26,6 +26,7 @@ const { createBuffer } = require('./services/buffer');
 const { collectRoute } = require('./routes/collect');
 const { healthRoute } = require('./routes/health');
 const { adminRoute } = require('./routes/admin');
+const { adminUserRoute } = require('./routes/admin-user');
 
 async function start() {
   const app = Fastify({
@@ -92,6 +93,7 @@ async function start() {
   app.register(collectRoute);
   app.register(healthRoute);
   app.register(adminRoute);
+  app.register(adminUserRoute);
 
   // ─── Graceful Shutdown ─────────────────────
   // Kapanırken buffer'daki kalan event'leri flush et

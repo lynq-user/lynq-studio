@@ -377,6 +377,7 @@ async function adminRoute(app) {
           SELECT toTimeZone(timestamp, 'Europe/Istanbul') AS ts,
             event_type, event_name, website_id, url_path, page_title,
             browser, os, device_type, referrer_domain, country, city,
+            client_id,
             substring(client_id, 1, 8) AS client_short,
             value, transaction_id
           FROM lynq_analytics.events ${whereClause}

@@ -369,7 +369,7 @@ async function renderLive() {
         <td>${e.browser} / ${e.os}</td>
         <td>${e.device_type}</td>
         <td>${e.referrer_domain || '-'}</td>
-        <td style="font-family:monospace;font-size:0.75rem">${e.client_short}</td>
+        <td style="font-family:monospace;font-size:0.75rem;cursor:pointer;color:var(--accent)" onclick="showUserJourney('${e.client_id}')" title="${e.client_id}">${e.client_short}</td>
       </tr>
     `).join('');
   }
@@ -761,6 +761,111 @@ async function loadCoverage() {
         <span style="color:var(--text2)">■</span> 0% / yok
       </div>
     </div>
+  `;
+}
+
+// ─── User Journey ─────────────────────────
+async function showUserJourney(clientId) {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div><br>Kullanıcı yolculuğu yükleniyor...</div>';
+
+  const data = await api('/api/admin/user/' + clientId + '?website_id=poledoor');
+  const s = data.summary || {};
+
+  content.innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">👤 Kullanıcı Yolculuğu</div>
+        <div class="page-subtitle" style="font-family:monospace">${clientId}</div>
+      </div>
+      <div>
+        <button class="btn btn-sm" onclick="showUserJourney('${clientId}')">↻ Yenile</button>
+        <button class="btn btn-sm" onclick="showPage('live')" style="margin-left:0.5rem">← Geri</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">İlk Görülme</div>
+        <div class="stat-value" style="font-size:1rem">${s.first_seen || '-'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Son Aktivite</div>
+        <div class="stat-value" style="font-size:1rem">${s.last_seen || '-'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Toplam Event</div>
+        <div class="stat-value">${formatNum(s.total_events)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sayfa Görüntüleme</div>
+        <div class="stat-value">${formatNum(s.pageviews)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Session Sayısı</div>
+        <div class="stat-value">${formatNum(s.total_sessions)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Satın Alma</div>
+        <div class="stat-value" style="color:${parseInt(s.purchases) > 0 ? 'var(--green)' : 'var(--text2)'}">${formatNum(s.purchases)}</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Cihaz Bilgisi</div>
+      <div style="display:flex;gap:2rem;flex-wrap:wrap;font-size:0.85rem">
+        <div><span style="color:var(--text2)">Browser:</span> ${s.browser || '-'}</div>
+        <div><span style="color:var(--text2)">OS:</span> ${s.os || '-'}</div>
+        <div><span style="color:var(--text2)">Cihaz:</span> ${s.device_type || '-'}</div>
+        <div><span style="color:var(--text2)">Konum:</span> ${s.city || '-'}, ${s.country || '-'}</div>
+        <div><span style="color:var(--text2)">Ekran:</span> ${s.screen || '-'}</div>
+        <div><span style="color:var(--text2)">Dil:</span> ${s.language || '-'}</div>
+      </div>
+    </div>
+
+    ${(data.sessions || []).map((sess, si) => `
+      <div class="card" style="margin-bottom:0.75rem;border-left:3px solid var(--accent)">
+        <div class="card-title">
+          <div>
+            Session ${data.sessions.length - si}
+            ${sess.utm_source ? '<span class="tag tag-green" style="margin-left:8px">' + sess.utm_source + ' / ' + sess.utm_medium + '</span>' : ''}
+            ${sess.referrer_domain ? '<span class="tag tag-blue" style="margin-left:4px">' + sess.referrer_domain + '</span>' : '<span class="tag tag-yellow" style="margin-left:4px">Direkt</span>'}
+          </div>
+          <div style="font-size:0.75rem;color:var(--text2)">
+            ${sess.first_event} → ${sess.last_event}
+            <span style="margin-left:8px">${sess.events.length} event</span>
+          </div>
+        </div>
+
+        <div style="position:relative;padding-left:24px">
+          ${sess.events.map((ev, ei) => `
+            <div style="position:relative;padding:0.4rem 0;border-left:2px solid var(--border);padding-left:16px;margin-left:0">
+              <div style="position:absolute;left:-5px;top:0.55rem;width:8px;height:8px;border-radius:50%;background:${
+                ev.event_type === 'purchase' ? 'var(--green)' :
+                ev.event_type === 'add_to_cart' ? 'var(--yellow)' :
+                ev.event_type === 'page_view' ? 'var(--blue)' :
+                ev.event_type === 'session_start' ? 'var(--accent)' :
+                'var(--text2)'
+              }"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  ${eventTypeTag(ev.event_type)}
+                  ${ev.event_name && ev.event_name !== ev.event_type ? '<span style="color:var(--text2);margin-left:4px;font-size:0.8rem">' + ev.event_name + '</span>' : ''}
+                  <span style="color:var(--text);margin-left:8px;font-size:0.85rem">${ev.url_path || ''}</span>
+                  ${ev.page_title ? '<span style="color:var(--text2);margin-left:4px;font-size:0.75rem">(' + ev.page_title.substring(0, 50) + ')</span>' : ''}
+                </div>
+                <span style="font-size:0.7rem;color:var(--text2);white-space:nowrap">${ev.ts?.split(' ')[1] || ''}</span>
+              </div>
+              ${ev.item_names && ev.item_names.length > 0 ? '<div style="margin-top:0.3rem;font-size:0.75rem;color:var(--yellow)">🛒 ' + ev.item_names.join(', ') + (ev.value > 0 ? ' — ₺' + parseFloat(ev.value).toLocaleString('tr-TR') : '') + '</div>' : ''}
+              ${ev.transaction_id ? '<div style="margin-top:0.2rem;font-size:0.75rem;color:var(--green)">💰 Sipariş: ' + ev.transaction_id + '</div>' : ''}
+              ${ev.search_term ? '<div style="margin-top:0.2rem;font-size:0.75rem;color:var(--accent)">🔍 "' + ev.search_term + '"</div>' : ''}
+              ${ev.scroll_depth > 0 ? '<div style="margin-top:0.2rem;font-size:0.75rem;color:var(--text2)">📜 %' + ev.scroll_depth + ' scroll</div>' : ''}
+              ${ev.click_text ? '<div style="margin-top:0.2rem;font-size:0.75rem;color:var(--text2)">👆 ' + ev.click_text + '</div>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('')}
   `;
 }
 

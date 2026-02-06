@@ -113,6 +113,10 @@
     <div class="nav-section">Müşteriler</div>
     <div class="nav-item" onclick="showPage('clients')">🏢 Müşteriler</div>
 
+    <div class="nav-section">Debug</div>
+    <div class="nav-item" onclick="showPage('inspector')">🔍 Event Inspector</div>
+    <div class="nav-item" onclick="showPage('coverage')">📋 Parametre Doluluk</div>
+
     <div class="nav-section">Yönetim</div>
     <div class="nav-item" onclick="showPage('usage')">💰 Kullanım & Maliyet</div>
     <div class="nav-item" onclick="showPage('system')">🔧 Sistem Sağlığı</div>
@@ -172,6 +176,8 @@ async function showPage(page) {
     case 'clients': await renderClients(); break;
     case 'usage': await renderUsage(); break;
     case 'system': await renderSystem(); break;
+    case 'inspector': await renderInspector(); break;
+    case 'coverage': await renderCoverage(); break;
   }
 }
 
@@ -539,6 +545,222 @@ async function renderSystem() {
       </div>
       <div class="stat-sub">${data.bad_event_rate.bad} hatalı / ${data.bad_event_rate.good} başarılı event</div>
     </div>` : ''}
+  `;
+}
+
+// ─── Event Inspector ───────────────────────
+async function renderInspector() {
+  // Önce client listesini al
+  const clientsData = await api('/api/admin/clients');
+  const clients = clientsData.clients || [];
+  const defaultClient = clients[0]?.website_id || '';
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔍 Event Inspector</div>
+        <div class="page-subtitle">Her event'in tüm parametrelerini detaylı incele — dolu/boş alanları gör</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:1rem;margin-bottom:1rem">
+      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+        <select id="ins-client" onchange="loadInspector()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:0.4rem 0.75rem;border-radius:6px;font-size:0.85rem">
+          ${clients.map(c => `<option value="${c.website_id}" ${c.website_id === defaultClient ? 'selected' : ''}>${c.website_id}</option>`).join('')}
+        </select>
+        <select id="ins-type" onchange="loadInspector()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:0.4rem 0.75rem;border-radius:6px;font-size:0.85rem">
+          <option value="">Tüm Event Tipleri</option>
+          <option value="page_view">page_view</option>
+          <option value="session_start">session_start</option>
+          <option value="scroll">scroll</option>
+          <option value="custom">custom</option>
+          <option value="view_item">view_item</option>
+          <option value="add_to_cart">add_to_cart</option>
+          <option value="purchase">purchase</option>
+          <option value="view_item_list">view_item_list</option>
+          <option value="begin_checkout">begin_checkout</option>
+        </select>
+        <input id="ins-clientid" placeholder="Client ID filtrele..." style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:0.4rem 0.75rem;border-radius:6px;font-size:0.85rem;width:200px" />
+        <button class="btn btn-sm" onclick="loadInspector()">Filtrele</button>
+      </div>
+    </div>
+
+    <div id="inspector-results"><div class="loading"><div class="spinner"></div></div></div>
+  `;
+
+  loadInspector();
+}
+
+async function loadInspector() {
+  const client = document.getElementById('ins-client').value;
+  const type = document.getElementById('ins-type').value;
+  const clientId = document.getElementById('ins-clientid').value;
+
+  let url = '/api/admin/event-detail?website_id=' + client + '&limit=30';
+  if (type) url += '&event_type=' + type;
+  if (clientId) url += '&client_id=' + clientId;
+
+  const data = await api(url);
+  const container = document.getElementById('inspector-results');
+
+  if (!data.events || data.events.length === 0) {
+    container.innerHTML = '<div class="empty">Filtrelerle eşleşen event bulunamadı.</div>';
+    return;
+  }
+
+  container.innerHTML = data.events.map((ev, i) => `
+    <div class="card" style="margin-bottom:0.75rem">
+      <div class="card-title" style="cursor:pointer" onclick="document.getElementById('ev-detail-${i}').style.display = document.getElementById('ev-detail-${i}').style.display === 'none' ? 'block' : 'none'">
+        <div>
+          ${eventTypeTag(ev.event_type)}
+          ${ev.event_name ? '<span class="tag tag-blue" style="margin-left:4px">' + ev.event_name + '</span>' : ''}
+          <span style="color:var(--text2);margin-left:8px;font-weight:400;font-size:0.8rem">${ev.url_path}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem">
+          <span style="font-size:0.75rem;color:var(--text2)">${ev.ts}</span>
+          <span class="tag tag-green">${ev.filled_count} dolu</span>
+          <span class="tag tag-red">${ev.empty_count} boş</span>
+          <span style="font-size:0.85rem;color:var(--text2)">▼</span>
+        </div>
+      </div>
+
+      <div id="ev-detail-${i}" style="display:${i === 0 ? 'block' : 'none'}">
+        <div style="margin-bottom:0.75rem">
+          <div style="font-size:0.7rem;text-transform:uppercase;color:var(--green);margin-bottom:0.4rem;letter-spacing:0.05em">✓ Dolu Parametreler (${ev.filled_count})</div>
+          <table>
+            <thead><tr><th style="width:200px">Parametre</th><th>Değer</th></tr></thead>
+            <tbody>
+              ${ev.filled_params.map(p => `
+                <tr>
+                  <td style="font-family:monospace;font-size:0.8rem;color:var(--accent)">${p.key}</td>
+                  <td style="font-size:0.8rem;word-break:break-all">${
+                    Array.isArray(p.value)
+                      ? '<span style="color:var(--yellow)">[' + p.value.join(', ') + ']</span>'
+                      : typeof p.value === 'object'
+                        ? '<span style="color:var(--yellow)">' + JSON.stringify(p.value) + '</span>'
+                        : p.value
+                  }</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <div style="font-size:0.7rem;text-transform:uppercase;color:var(--red);margin-bottom:0.4rem;letter-spacing:0.05em">✗ Boş Parametreler (${ev.empty_count})</div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.3rem">
+            ${ev.empty_params.map(p => `<span style="font-family:monospace;font-size:0.7rem;padding:0.15rem 0.4rem;background:rgba(239,68,68,0.08);color:var(--text2);border-radius:3px">${p}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── Parametre Doluluk Raporu ──────────────
+async function renderCoverage() {
+  const clientsData = await api('/api/admin/clients');
+  const clients = clientsData.clients || [];
+  const defaultClient = clients[0]?.website_id || '';
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">📋 Parametre Doluluk Raporu</div>
+        <div class="page-subtitle">Event tipi başına hangi parametreler dolduruluyor — veri kalitesi kontrolü</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:1rem;margin-bottom:1rem">
+      <select id="cov-client" onchange="loadCoverage()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:0.4rem 0.75rem;border-radius:6px;font-size:0.85rem">
+        ${clients.map(c => `<option value="${c.website_id}" ${c.website_id === defaultClient ? 'selected' : ''}>${c.website_id}</option>`).join('')}
+      </select>
+    </div>
+
+    <div id="coverage-results"><div class="loading"><div class="spinner"></div></div></div>
+  `;
+
+  loadCoverage();
+}
+
+async function loadCoverage() {
+  const client = document.getElementById('cov-client').value;
+  const data = await api('/api/admin/param-coverage?website_id=' + client);
+  const container = document.getElementById('coverage-results');
+
+  if (!data.coverage || data.coverage.length === 0) {
+    container.innerHTML = '<div class="empty">Henüz veri yok.</div>';
+    return;
+  }
+
+  function pct(has, total) {
+    if (!total || total === '0') return { text: '-', color: 'var(--text2)' };
+    const p = Math.round((parseInt(has) / parseInt(total)) * 100);
+    const color = p === 0 ? 'var(--text2)' : p < 30 ? 'var(--red)' : p < 70 ? 'var(--yellow)' : 'var(--green)';
+    return { text: p + '%', color };
+  }
+
+  function cell(has, total) {
+    const { text, color } = pct(has, total);
+    return `<td style="text-align:center;color:${color};font-weight:600;font-size:0.8rem">${text}</td>`;
+  }
+
+  const params = [
+    { key: 'has_url_path', label: 'url_path', cat: 'Sayfa' },
+    { key: 'has_page_title', label: 'page_title', cat: 'Sayfa' },
+    { key: 'has_client_id', label: 'client_id', cat: 'Kimlik' },
+    { key: 'has_session_id', label: 'session_id', cat: 'Kimlik' },
+    { key: 'has_referrer', label: 'referrer', cat: 'Kaynak' },
+    { key: 'has_referrer_domain', label: 'referrer_domain', cat: 'Kaynak' },
+    { key: 'has_utm_source', label: 'utm_source', cat: 'Kaynak' },
+    { key: 'has_utm_medium', label: 'utm_medium', cat: 'Kaynak' },
+    { key: 'has_country', label: 'country', cat: 'Geo' },
+    { key: 'has_city', label: 'city', cat: 'Geo' },
+    { key: 'has_browser', label: 'browser', cat: 'Cihaz' },
+    { key: 'has_os', label: 'os', cat: 'Cihaz' },
+    { key: 'has_device_type', label: 'device_type', cat: 'Cihaz' },
+    { key: 'has_screen', label: 'screen', cat: 'Cihaz' },
+    { key: 'has_language', label: 'language', cat: 'Cihaz' },
+    { key: 'has_transaction_id', label: 'transaction_id', cat: 'E-Com' },
+    { key: 'has_currency', label: 'currency', cat: 'E-Com' },
+    { key: 'has_value', label: 'value', cat: 'E-Com' },
+    { key: 'has_items', label: 'items[]', cat: 'E-Com' },
+    { key: 'has_event_category', label: 'event_category', cat: 'Custom' },
+    { key: 'has_event_label', label: 'event_label', cat: 'Custom' },
+    { key: 'has_properties', label: 'properties', cat: 'Custom' },
+    { key: 'has_scroll_depth', label: 'scroll_depth', cat: 'Interaction' },
+    { key: 'has_search_term', label: 'search_term', cat: 'Interaction' }
+  ];
+
+  container.innerHTML = `
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Event Type</th>
+              <th style="text-align:center">Toplam</th>
+              ${params.map(p => `<th style="text-align:center;font-size:0.65rem;writing-mode:vertical-lr;height:100px;padding:0.3rem" title="${p.label}">${p.label}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${data.coverage.map(row => `
+              <tr>
+                <td>${eventTypeTag(row.event_type)}</td>
+                <td style="text-align:center;font-weight:700">${formatNum(row.total)}</td>
+                ${params.map(p => cell(row[p.key], row.total)).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:1rem;font-size:0.75rem;color:var(--text2)">
+        <span style="color:var(--green)">■</span> 70%+ dolu &nbsp;
+        <span style="color:var(--yellow)">■</span> 30-70% dolu &nbsp;
+        <span style="color:var(--red)">■</span> <30% dolu &nbsp;
+        <span style="color:var(--text2)">■</span> 0% / yok
+      </div>
+    </div>
   `;
 }
 

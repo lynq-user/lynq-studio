@@ -4,15 +4,14 @@
   "private": true,
   "description": "First-party web analytics platform",
   "scripts": {
+    "start": "cd apps/server && node src/index.js",
+    "build": "cd apps/server && npm install && cd ../../packages/tracker && node build.js",
     "dev:server": "cd apps/server && npm run dev",
     "dev:tracker": "cd packages/tracker && npm run build:watch",
-    "build:tracker": "cd packages/tracker && npm run build",
-    "build:server": "cd apps/server && npm run build",
-    "db:setup": "cd apps/server && npm run db:setup",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "test": "echo 'Run tests per package'"
+    "docker:down": "docker compose down"
   },
+  "main": "apps/server/src/index.js",
   "keywords": ["analytics", "first-party", "clickhouse", "web-analytics"],
   "author": "",
   "license": "MIT"

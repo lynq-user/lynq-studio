@@ -207,13 +207,133 @@
     }, 500);
   }, { passive: true });
 
+  // ─── E-Commerce event isimleri ──────────────
+  var ECOM_EVENTS = [
+    'view_item_list', 'select_item', 'view_item', 'add_to_wishlist',
+    'add_to_cart', 'remove_from_cart', 'view_cart',
+    'begin_checkout', 'add_shipping_info', 'add_payment_info',
+    'purchase', 'refund',
+    'view_promotion', 'select_promotion'
+  ];
+
+  // E-commerce alanları (properties'den ayrı gönderilecek)
+  var ECOM_FIELDS = [
+    'transaction_id', 'affiliation', 'currency', 'value', 'tax',
+    'shipping', 'coupon', 'payment_type', 'shipping_tier',
+    'item_list_id', 'item_list_name', 'items',
+    'creative_name', 'creative_slot', 'promotion_id', 'promotion_name'
+  ];
+
+  // Interaction alanları
+  var INTERACTION_FIELDS = [
+    'event_category', 'event_label', 'event_value',
+    'click_element', 'click_text', 'click_url', 'click_id', 'click_classes',
+    'scroll_depth', 'form_id', 'form_name', 'form_destination',
+    'video_provider', 'video_title', 'video_url', 'video_duration', 'video_percent',
+    'file_name', 'file_extension', 'search_term',
+    'lcp_value', 'fid_value', 'cls_value', 'inp_value'
+  ];
+
+  /**
+   * Akıllı event gönderimi — event ismini tanır ve doğru alanları ayırır.
+   *
+   * Kullanım:
+   *   lynq.track('purchase', { transaction_id: 'ORD-123', value: 349.90, currency: 'TRY', items: [...] })
+   *   lynq.track('add_to_cart', { items: [{ item_id: 'SKU1', item_name: 'Nike', price: 199 }] })
+   *   lynq.track('menu_click', { event_category: 'navigation', event_label: 'hamburger' })
+   *   lynq.track('search', { search_term: 'kepenk motoru' })
+   */
+  function smartSend(name, data) {
+    if (!name) return;
+    getSession();
+    data = data || {};
+
+    // Event tipini belirle
+    var isEcom = ECOM_EVENTS.indexOf(name) !== -1;
+    var eventType = isEcom ? name : 'custom';
+
+    // Payload oluştur
+    var payload = {
+      website_id: websiteId,
+      event_type: eventType,
+      event_name: name,
+      client_id: clientId,
+      session_id: sessionId,
+      url_path: location.pathname,
+      url_query: location.search,
+      page_title: document.title || '',
+      referrer: document.referrer || '',
+      screen: screen.width + 'x' + screen.height,
+      language: navigator.language || '',
+      timestamp: new Date().toISOString()
+    };
+
+    // E-commerce ve interaction alanlarını doğrudan payload'a ekle
+    var knownFields = ECOM_FIELDS.concat(INTERACTION_FIELDS);
+    var extraProps = {};
+
+    for (var key in data) {
+      if (!data.hasOwnProperty(key)) continue;
+      if (knownFields.indexOf(key) !== -1) {
+        // Bilinen alan → doğrudan payload'a
+        payload[key] = data[key];
+      } else {
+        // Bilinmeyen alan → properties map'ine
+        extraProps[key] = String(data[key]);
+      }
+    }
+
+    // Kalan properties'i ekle
+    if (Object.keys(extraProps).length > 0) {
+      payload.properties = JSON.stringify(extraProps);
+    }
+
+    // Gönder
+    var body = JSON.stringify(payload);
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(endpoint, new Blob([body], { type: 'text/plain' }));
+    } else {
+      fetch(endpoint, {
+        method: 'POST', body: body,
+        headers: { 'Content-Type': 'text/plain' },
+        keepalive: true, mode: 'cors'
+      }).catch(function () {});
+    }
+  }
+
   // ─── Public API ─────────────────────────────
-  // window.lynq.event('signup_click', { plan: 'pro' });
   window.lynq = {
+    /**
+     * Genel event gönderimi — her türlü event için kullanılır.
+     * E-commerce, custom, interaction — hepsini otomatik tanır.
+     *
+     * @example
+     * // E-Commerce
+     * lynq.track('purchase', { transaction_id: 'ORD-123', value: 349.90, currency: 'TRY', items: [...] })
+     * lynq.track('add_to_cart', { items: [{ item_id: 'SKU1', item_name: 'Nike Air', price: 199.95 }] })
+     * lynq.track('view_item', { items: [{ item_id: 'SKU1', item_name: 'Nike Air', price: 199.95 }] })
+     *
+     * // Custom Event
+     * lynq.track('menu_click', { event_category: 'navigation', event_label: 'hamburger' })
+     * lynq.track('filter_apply', { event_category: 'filter', filter_type: 'size', filter_value: '42' })
+     * lynq.track('newsletter_signup', { email_domain: 'gmail.com' })
+     *
+     * // Site Search
+     * lynq.track('search', { search_term: 'kepenk motoru' })
+     *
+     * // File Download
+     * lynq.track('file_download', { file_name: 'katalog.pdf', file_extension: 'pdf' })
+     *
+     * // Video
+     * lynq.track('video_start', { video_title: 'Montaj Rehberi', video_provider: 'youtube' })
+     */
+    track: function (name, data) {
+      smartSend(name, data);
+    },
+
+    // Geriye uyumluluk — eski API
     event: function (name, props) {
-      if (!name) return;
-      getSession(); // session'ı güncelle
-      send('custom', name, props || {});
+      smartSend(name, props);
     }
   };
 

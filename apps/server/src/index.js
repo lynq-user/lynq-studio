@@ -31,7 +31,8 @@ async function start() {
   const app = Fastify({
     logger: {
       level: process.env.NODE_ENV === 'production' ? 'warn' : 'info'
-    }
+    },
+    trustProxy: true  // Railway/proxy arkasında gerçek IP'yi al (X-Forwarded-For)
   });
 
   // ─── CORS ──────────────────────────────────

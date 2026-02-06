@@ -10,6 +10,7 @@
  */
 
 const UAParser = require('ua-parser-js');
+const geoip = require('geoip-lite');
 
 /**
  * Event'i zenginleştir
@@ -51,11 +52,15 @@ function enrich(event, context) {
   enriched.utm_term = utmParams.utm_term;
   enriched.utm_content = utmParams.utm_content;
 
-  // ─── 4. GeoIP (Placeholder) ───────────────
-  // TODO: MaxMind GeoLite2 entegrasyonu (Faz 3)
-  // Şimdilik boş bırakıyoruz, Faz 3'te doldurulacak
-  enriched.country = enriched.country || '';
-  enriched.city = enriched.city || '';
+  // ─── 4. GeoIP ──────────────────────────────
+  const geo = geoip.lookup(context.ip);
+  if (geo) {
+    enriched.country = geo.country || '';  // ISO 3166-1: TR, US, DE
+    enriched.city = geo.city || '';
+  } else {
+    enriched.country = '';
+    enriched.city = '';
+  }
 
   // ─── 5. Timestamp normalization ────────────
   // Client timestamp'ını DateTime formatına çevir

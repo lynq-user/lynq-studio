@@ -1,0 +1,137 @@
+<!--
+  Lynq Studio — GTM E-Commerce Tag
+  ─────────────────────────────────
+  Bu tag'ı GTM'de Custom HTML olarak ekle.
+  Trigger: Custom Event → ecommerce olayları
+  
+  WooCommerce + GTM4WP veya diğer GTM e-commerce pluginleri
+  dataLayer'a GA4 formatında push yapar. Bu tag o push'ları
+  yakalar ve Lynq'e gönderir.
+
+  GTM Setup:
+  1. Tags → New → Custom HTML → Bu kodu yapıştır
+  2. Trigger: All Pages (DOM Ready)
+  3. Save → Submit → Publish
+-->
+<script>
+(function() {
+  var ENDPOINT = 'https://lynq-studio-production.up.railway.app/api/collect';
+  var WEBSITE_ID = 'poledoor';
+
+  // Lynq tracker'dan client_id ve session_id al
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? match[1] : '';
+  }
+
+  function getSessionId() {
+    try { return sessionStorage.getItem('_lynq_sid') || ''; } catch(e) { return ''; }
+  }
+
+  // Event'i Lynq'e gönder
+  function sendToLynq(eventType, data) {
+    var payload = {
+      website_id: WEBSITE_ID,
+      event_type: eventType,
+      event_name: eventType,
+      client_id: getCookie('_lynq_id'),
+      session_id: getSessionId(),
+      url_path: location.pathname,
+      url_query: location.search,
+      page_title: document.title,
+      referrer: document.referrer,
+      screen: screen.width + 'x' + screen.height,
+      language: navigator.language,
+      timestamp: new Date().toISOString()
+    };
+
+    // E-commerce alanları ekle
+    if (data.transaction_id) payload.transaction_id = data.transaction_id;
+    if (data.affiliation) payload.affiliation = data.affiliation;
+    if (data.currency) payload.currency = data.currency;
+    if (data.value) payload.value = parseFloat(data.value) || 0;
+    if (data.tax) payload.tax = parseFloat(data.tax) || 0;
+    if (data.shipping) payload.shipping = parseFloat(data.shipping) || 0;
+    if (data.coupon) payload.coupon = data.coupon;
+    if (data.payment_type) payload.payment_type = data.payment_type;
+    if (data.shipping_tier) payload.shipping_tier = data.shipping_tier;
+    if (data.item_list_name) payload.item_list_name = data.item_list_name;
+    if (data.item_list_id) payload.item_list_id = data.item_list_id;
+
+    // Items array'ini ekle (GA4 formatından Lynq formatına)
+    if (data.items && Array.isArray(data.items)) {
+      payload.items = data.items.map(function(item) {
+        return {
+          item_id: item.item_id || item.id || '',
+          item_name: item.item_name || item.name || '',
+          item_brand: item.item_brand || item.brand || '',
+          item_category: item.item_category || item.category || '',
+          item_category2: item.item_category2 || '',
+          item_category3: item.item_category3 || '',
+          item_category4: item.item_category4 || '',
+          item_category5: item.item_category5 || '',
+          item_variant: item.item_variant || item.variant || '',
+          price: parseFloat(item.price) || 0,
+          quantity: parseInt(item.quantity) || 1,
+          discount: parseFloat(item.discount) || 0,
+          coupon: item.coupon || '',
+          affiliation: item.affiliation || '',
+          item_list_name: item.item_list_name || '',
+          item_list_id: item.item_list_id || '',
+          index: parseInt(item.index) || 0,
+          location_id: item.location_id || ''
+        };
+      });
+    }
+
+    // Gönder (text/plain — CORS preflight yok)
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(ENDPOINT, new Blob([JSON.stringify(payload)], { type: 'text/plain' }));
+    } else {
+      fetch(ENDPOINT, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain' },
+        keepalive: true,
+        mode: 'cors'
+      }).catch(function(){});
+    }
+  }
+
+  // ─── dataLayer dinle ──────────────────────
+  // GA4 e-commerce event'leri: view_item, add_to_cart, purchase, vb.
+  var GA4_ECOM_EVENTS = [
+    'view_item_list', 'select_item', 'view_item', 'add_to_wishlist',
+    'add_to_cart', 'remove_from_cart', 'view_cart',
+    'begin_checkout', 'add_shipping_info', 'add_payment_info',
+    'purchase', 'refund',
+    'view_promotion', 'select_promotion'
+  ];
+
+  // Mevcut dataLayer'ı tara (sayfa yüklenirken zaten push edilmiş olabilir)
+  if (window.dataLayer) {
+    window.dataLayer.forEach(function(entry) {
+      if (entry.event && GA4_ECOM_EVENTS.indexOf(entry.event) !== -1) {
+        var ecom = entry.ecommerce || entry;
+        sendToLynq(entry.event, ecom);
+      }
+    });
+  }
+
+  // Yeni push'ları dinle
+  var origPush = (window.dataLayer = window.dataLayer || []).push;
+  window.dataLayer.push = function() {
+    var result = origPush.apply(this, arguments);
+
+    for (var i = 0; i < arguments.length; i++) {
+      var entry = arguments[i];
+      if (entry && entry.event && GA4_ECOM_EVENTS.indexOf(entry.event) !== -1) {
+        var ecom = entry.ecommerce || entry;
+        sendToLynq(entry.event, ecom);
+      }
+    }
+
+    return result;
+  };
+})();
+</script>

@@ -28,14 +28,45 @@
     try { return sessionStorage.getItem('_lynq_sid') || ''; } catch(e) { return ''; }
   }
 
+  // client_id yoksa kendimiz üretelim (tracker henüz yüklenmemişse)
+  function ensureClientId() {
+    var id = getCookie('_lynq_id');
+    if (!id) {
+      id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = (Math.random() * 16) | 0;
+            return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+          });
+      var parts = ['_lynq_id=' + id, 'path=/', 'max-age=63072000', 'SameSite=Lax'];
+      if (location.protocol === 'https:') parts.push('Secure');
+      document.cookie = parts.join('; ');
+    }
+    return id;
+  }
+
+  function ensureSessionId() {
+    var sid = getSessionId();
+    if (!sid) {
+      sid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = (Math.random() * 16) | 0;
+            return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+          });
+      try { sessionStorage.setItem('_lynq_sid', sid); } catch(e) {}
+    }
+    return sid;
+  }
+
   // Event'i Lynq'e gönder
   function sendToLynq(eventType, data) {
     var payload = {
       website_id: WEBSITE_ID,
       event_type: eventType,
       event_name: eventType,
-      client_id: getCookie('_lynq_id'),
-      session_id: getSessionId(),
+      client_id: ensureClientId(),
+      session_id: ensureSessionId(),
       url_path: location.pathname,
       url_query: location.search,
       page_title: document.title,

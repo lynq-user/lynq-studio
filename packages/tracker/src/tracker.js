@@ -118,16 +118,17 @@
 
     var body = JSON.stringify(payload);
 
-    // sendBeacon tercih edilir — sayfa kapanırken bile gönderir
+    // sendBeacon ile text/plain gönder — CORS preflight tetiklemez
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
+      navigator.sendBeacon(endpoint, new Blob([body], { type: 'text/plain' }));
     } else {
-      // Fallback: fetch with keepalive
+      // Fallback: fetch — no credentials, no preflight
       fetch(endpoint, {
         method: 'POST',
         body: body,
-        headers: { 'Content-Type': 'application/json' },
-        keepalive: true
+        headers: { 'Content-Type': 'text/plain' },
+        keepalive: true,
+        mode: 'cors'
       }).catch(function () { /* sessiz hata */ });
     }
   }

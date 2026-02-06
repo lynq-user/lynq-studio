@@ -36,8 +36,20 @@ async function start() {
   // ─── CORS ──────────────────────────────────
   // Sadece kendi domain'lerinden gelen isteklere izin ver
   await app.register(cors, {
-    origin: true,  // Tüm origin'lere izin ver (test aşaması)
-    methods: ['GET', 'POST', 'OPTIONS']
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
+  });
+
+  // ─── text/plain body'yi JSON olarak parse et ──
+  // Tracker CORS preflight'tan kaçınmak için text/plain gönderir
+  app.addContentTypeParser('text/plain', { parseAs: 'string' }, function (req, body, done) {
+    try {
+      done(null, JSON.parse(body));
+    } catch (err) {
+      done(err);
+    }
   });
 
   // ─── Rate Limiting ─────────────────────────

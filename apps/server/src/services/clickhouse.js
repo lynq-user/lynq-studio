@@ -5,13 +5,22 @@
 const { createClient } = require('@clickhouse/client');
 
 function createClickHouseClient() {
-  const client = createClient({
-    url: process.env.CLICKHOUSE_HOST || 'http://localhost:8123',
+  const host = process.env.CLICKHOUSE_HOST || 'http://localhost:8123';
+
+  const config = {
+    url: host,
     database: process.env.CLICKHOUSE_DB || 'lynq_analytics',
     username: process.env.CLICKHOUSE_USER || 'default',
     password: process.env.CLICKHOUSE_PASSWORD || ''
-  });
+  };
 
+  // ClickHouse Cloud HTTPS bağlantısı için TLS ayarları
+  if (host.startsWith('https://')) {
+    config.tls = { rejectUnauthorized: true };
+  }
+
+  console.log('ClickHouse connecting to:', host);
+  const client = createClient(config);
   return client;
 }
 

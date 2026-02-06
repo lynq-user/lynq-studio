@@ -61,10 +61,16 @@ async function start() {
   });
 
   // ─── Static Files (Tracker JS serve) ───────
-  // Tracker'ı kendi domain'inden serve et (adblocker dayanıklılığı)
   await app.register(fastifyStatic, {
     root: path.join(__dirname, '../../..', 'packages', 'tracker', 'dist'),
     prefix: '/t/',
+    decorateReply: false
+  });
+
+  // ─── Admin Panel (static HTML) ─────────────
+  await app.register(require('@fastify/static'), {
+    root: path.join(__dirname, '../..', 'admin'),
+    prefix: '/admin/',
     decorateReply: false
   });
 

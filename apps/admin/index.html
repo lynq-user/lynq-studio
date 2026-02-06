@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lynq Studio — Admin</title>
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --surface: #141417;
+      --surface2: #1c1c21;
+      --border: #2a2a30;
+      --text: #e5e5e7;
+      --text2: #8b8b92;
+      --accent: #6366f1;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+      --blue: #3b82f6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* Layout */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 0; position: fixed; height: 100vh; overflow-y: auto; }
+    .main { margin-left: 220px; flex: 1; padding: 2rem; }
+    .logo { font-size: 1.2rem; font-weight: 700; padding: 0 1.25rem 1.5rem; color: #fff; display: flex; align-items: center; gap: 0.5rem; }
+    .logo span { color: var(--accent); }
+
+    /* Sidebar Nav */
+    .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1.25rem; color: var(--text2); cursor: pointer; transition: all 0.15s; font-size: 0.875rem; }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { color: #fff; background: var(--surface2); border-right: 2px solid var(--accent); }
+    .nav-section { padding: 1rem 1.25rem 0.4rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); }
+
+    /* Cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .stat-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; margin: 0.25rem 0; }
+    .stat-sub { font-size: 0.8rem; color: var(--text2); }
+
+    /* Table */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); border-bottom: 1px solid var(--border); }
+    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    tr:hover td { background: var(--surface2); }
+    tr:last-child td { border-bottom: none; }
+
+    /* Tags */
+    .tag { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+    .tag-green { background: rgba(34,197,94,0.15); color: var(--green); }
+    .tag-red { background: rgba(239,68,68,0.15); color: var(--red); }
+    .tag-yellow { background: rgba(234,179,8,0.15); color: var(--yellow); }
+    .tag-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+    /* Status dot */
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 0.4rem; }
+    .dot-green { background: var(--green); }
+    .dot-red { background: var(--red); }
+    .dot-yellow { background: var(--yellow); }
+
+    /* Live feed */
+    .live-row { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Header */
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .page-title { font-size: 1.5rem; font-weight: 700; }
+    .page-subtitle { color: var(--text2); font-size: 0.875rem; }
+
+    /* Refresh button */
+    .btn { padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
+    .btn:hover { border-color: var(--accent); }
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+    .tab { padding: 0.6rem 1rem; cursor: pointer; color: var(--text2); font-size: 0.875rem; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: #fff; border-bottom-color: var(--accent); }
+
+    /* Loading */
+    .loading { text-align: center; padding: 3rem; color: var(--text2); }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 2rem; color: var(--text2); }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 1rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo"><span>◆</span> Lynq Studio</div>
+
+    <div class="nav-section">Genel</div>
+    <div class="nav-item active" onclick="showPage('overview')">📊 Genel Bakış</div>
+    <div class="nav-item" onclick="showPage('live')">⚡ Canlı Akış</div>
+
+    <div class="nav-section">Müşteriler</div>
+    <div class="nav-item" onclick="showPage('clients')">🏢 Müşteriler</div>
+
+    <div class="nav-section">Yönetim</div>
+    <div class="nav-item" onclick="showPage('usage')">💰 Kullanım & Maliyet</div>
+    <div class="nav-item" onclick="showPage('system')">🔧 Sistem Sağlığı</div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main" id="content">
+    <div class="loading"><div class="spinner"></div><br>Yükleniyor...</div>
+  </main>
+</div>
+
+<script>
+const API = 'https://lynq-studio-production.up.railway.app';
+let autoRefresh = null;
+
+// ─── Fetch Helper ──────────────────────────
+async function api(path) {
+  const res = await fetch(API + path);
+  return res.json();
+}
+
+function formatNum(n) {
+  return parseInt(n || 0).toLocaleString('tr-TR');
+}
+
+function timeAgo(ts) {
+  const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (diff < 60) return Math.round(diff) + ' sn önce';
+  if (diff < 3600) return Math.round(diff / 60) + ' dk önce';
+  if (diff < 86400) return Math.round(diff / 3600) + ' saat önce';
+  return Math.round(diff / 86400) + ' gün önce';
+}
+
+function eventTypeTag(type) {
+  const colors = {
+    page_view: 'blue', session_start: 'green', scroll: 'yellow',
+    custom: 'accent', purchase: 'green', add_to_cart: 'yellow',
+    view_item: 'blue'
+  };
+  const c = colors[type] || 'blue';
+  return `<span class="tag tag-${c}">${type}</span>`;
+}
+
+// ─── Pages ─────────────────────────────────
+async function showPage(page) {
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event?.target?.classList?.add('active');
+  if (autoRefresh) { clearInterval(autoRefresh); autoRefresh = null; }
+
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div><br>Yükleniyor...</div>';
+
+  switch (page) {
+    case 'overview': await renderOverview(); break;
+    case 'live': await renderLive(); break;
+    case 'clients': await renderClients(); break;
+    case 'usage': await renderUsage(); break;
+    case 'system': await renderSystem(); break;
+  }
+}
+
+// ─── Overview ──────────────────────────────
+async function renderOverview() {
+  const [clients, system] = await Promise.all([
+    api('/api/admin/clients'),
+    api('/api/admin/system')
+  ]);
+
+  const totals = clients.clients?.reduce((acc, c) => ({
+    events: acc.events + parseInt(c.total_events || 0),
+    pageviews: acc.pageviews + parseInt(c.pageviews || 0),
+    visitors: acc.visitors + parseInt(c.unique_visitors || 0),
+    last5min: acc.last5min + parseInt(c.events_last_5min || 0),
+    last24h: acc.last24h + parseInt(c.events_last_24h || 0)
+  }), { events: 0, pageviews: 0, visitors: 0, last5min: 0, last24h: 0 }) || {};
+
+  const chStatus = system.clickhouse?.status === 'ok';
+  const pgStatus = system.postgres?.status === 'ok';
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">Genel Bakış</div>
+        <div class="page-subtitle">Tüm müşterilerin toplam durumu</div>
+      </div>
+      <button class="btn" onclick="showPage('overview')">↻ Yenile</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Aktif Şu An (5dk)</div>
+        <div class="stat-value" style="color:var(--green)">${formatNum(totals.last5min)}</div>
+        <div class="stat-sub">event / 5 dakika</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Son 24 Saat</div>
+        <div class="stat-value">${formatNum(totals.last24h)}</div>
+        <div class="stat-sub">toplam event</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Toplam Ziyaretçi</div>
+        <div class="stat-value">${formatNum(totals.visitors)}</div>
+        <div class="stat-sub">tekil kullanıcı</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Toplam Sayfa Görüntüleme</div>
+        <div class="stat-value">${formatNum(totals.pageviews)}</div>
+        <div class="stat-sub">page view</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Müşteri Sayısı</div>
+        <div class="stat-value">${clients.clients?.length || 0}</div>
+        <div class="stat-sub">aktif website</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sistem Durumu</div>
+        <div class="stat-value" style="font-size:1rem">
+          <span class="dot ${chStatus ? 'dot-green' : 'dot-red'}"></span>ClickHouse
+          <span class="dot ${pgStatus ? 'dot-green' : 'dot-red'}" style="margin-left:0.5rem"></span>PostgreSQL
+        </div>
+        <div class="stat-sub">Buffer: ${system.buffer?.eventCount || 0} event bekliyor</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Müşteriler</div>
+      <table>
+        <thead><tr><th>Website</th><th>Son 5dk</th><th>Son 24 Saat</th><th>Toplam Event</th><th>Ziyaretçi</th><th>Son Event</th><th>Durum</th></tr></thead>
+        <tbody>
+          ${(clients.clients || []).map(c => `
+            <tr style="cursor:pointer" onclick="showClientDetail('${c.website_id}')">
+              <td><strong>${c.website_id}</strong></td>
+              <td>${formatNum(c.events_last_5min)}</td>
+              <td>${formatNum(c.events_last_24h)}</td>
+              <td>${formatNum(c.total_events)}</td>
+              <td>${formatNum(c.unique_visitors)}</td>
+              <td>${timeAgo(c.last_event)}</td>
+              <td>${parseInt(c.events_last_5min) > 0
+                ? '<span class="tag tag-green">Aktif</span>'
+                : '<span class="tag tag-yellow">Pasif</span>'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Client Detail ─────────────────────────
+async function showClientDetail(websiteId) {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div><br>Yükleniyor...</div>';
+
+  const data = await api('/api/admin/clients/' + websiteId + '?hours=24');
+
+  content.innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">${websiteId}</div>
+        <div class="page-subtitle">Son 24 saat detayı</div>
+      </div>
+      <div>
+        <button class="btn btn-sm" onclick="showClientDetail('${websiteId}')">↻ Yenile</button>
+        <button class="btn btn-sm" onclick="showPage('clients')" style="margin-left:0.5rem">← Geri</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Toplam Event</div>
+        <div class="stat-value">${formatNum(data.stats?.total_events)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sayfa Görüntüleme</div>
+        <div class="stat-value">${formatNum(data.stats?.pageviews)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ziyaretçi</div>
+        <div class="stat-value">${formatNum(data.stats?.unique_visitors)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Session</div>
+        <div class="stat-value">${formatNum(data.stats?.sessions)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Custom Event</div>
+        <div class="stat-value">${formatNum(data.stats?.custom_events)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Bad Events</div>
+        <div class="stat-value" style="color:${data.bad_event_count > 0 ? 'var(--red)' : 'var(--green)'}">${data.bad_event_count}</div>
+      </div>
+    </div>
+
+    ${data.bad_event_count > 0 ? `
+    <div class="card" style="border-color:var(--red)">
+      <div class="card-title" style="color:var(--red)">⚠ Hatalı Event'ler</div>
+      <table>
+        <thead><tr><th>Zaman</th><th>Hata</th><th>Payload</th></tr></thead>
+        <tbody>
+          ${data.bad_events.map(e => `<tr><td>${e.ts}</td><td><span class="tag tag-red">${e.reason}</span></td><td style="font-size:0.75rem;color:var(--text2)">${e.payload_preview}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
+
+    <div class="card">
+      <div class="card-title">Saatlik Dağılım</div>
+      <table>
+        <thead><tr><th>Saat</th><th>Event</th><th>Ziyaretçi</th><th>Pageview</th></tr></thead>
+        <tbody>
+          ${(data.hourly_breakdown || []).map(h => `<tr><td>${h.saat}</td><td>${formatNum(h.events)}</td><td>${formatNum(h.visitors)}</td><td>${formatNum(h.pageviews)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Son Event'ler (Debug)</div>
+      <table>
+        <thead><tr><th>Zaman</th><th>Tip</th><th>Sayfa</th><th>Browser</th><th>Cihaz</th><th>Kullanıcı</th></tr></thead>
+        <tbody>
+          ${(data.recent_events || []).map(e => `
+            <tr class="live-row">
+              <td style="white-space:nowrap">${e.ts}</td>
+              <td>${eventTypeTag(e.event_type)}</td>
+              <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${e.url_path}</td>
+              <td>${e.browser}</td>
+              <td>${e.device_type}</td>
+              <td style="font-family:monospace;font-size:0.75rem">${e.client_short}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Live Feed ─────────────────────────────
+async function renderLive() {
+  async function refresh() {
+    const data = await api('/api/admin/live?limit=50');
+    document.getElementById('live-body').innerHTML = (data.events || []).map(e => `
+      <tr class="live-row">
+        <td style="white-space:nowrap">${e.ts}</td>
+        <td><span class="tag tag-blue">${e.website_id}</span></td>
+        <td>${eventTypeTag(e.event_type)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${e.url_path}</td>
+        <td>${e.browser} / ${e.os}</td>
+        <td>${e.device_type}</td>
+        <td>${e.referrer_domain || '-'}</td>
+        <td style="font-family:monospace;font-size:0.75rem">${e.client_short}</td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚡ Canlı Event Akışı</div>
+        <div class="page-subtitle">Son gelen event'ler (her 5 saniyede güncellenir)</div>
+      </div>
+      <button class="btn" onclick="renderLive()">↻ Yenile</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Zaman</th><th>Müşteri</th><th>Tip</th><th>Sayfa</th><th>Browser/OS</th><th>Cihaz</th><th>Kaynak</th><th>Kullanıcı</th></tr></thead>
+        <tbody id="live-body"><tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+  `;
+
+  await refresh();
+  autoRefresh = setInterval(refresh, 5000);
+}
+
+// ─── Clients List ──────────────────────────
+async function renderClients() {
+  const data = await api('/api/admin/clients');
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">Müşteriler</div>
+        <div class="page-subtitle">${data.clients?.length || 0} aktif website</div>
+      </div>
+      <button class="btn" onclick="showPage('clients')">↻ Yenile</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Website ID</th><th>Durum</th><th>Aktif (5dk)</th><th>Son 1 Saat</th><th>Son 24 Saat</th><th>Toplam</th><th>Ziyaretçi</th><th>Session</th><th>İlk Event</th><th>Son Event</th><th></th></tr></thead>
+        <tbody>
+          ${(data.clients || []).map(c => `
+            <tr>
+              <td><strong>${c.website_id}</strong></td>
+              <td>${parseInt(c.events_last_5min) > 0 ? '<span class="dot dot-green"></span>Aktif' : '<span class="dot dot-yellow"></span>Pasif'}</td>
+              <td>${formatNum(c.events_last_5min)}</td>
+              <td>${formatNum(c.events_last_hour)}</td>
+              <td>${formatNum(c.events_last_24h)}</td>
+              <td>${formatNum(c.total_events)}</td>
+              <td>${formatNum(c.unique_visitors)}</td>
+              <td>${formatNum(c.sessions)}</td>
+              <td>${timeAgo(c.first_event)}</td>
+              <td>${timeAgo(c.last_event)}</td>
+              <td><button class="btn btn-sm" onclick="showClientDetail('${c.website_id}')">Detay →</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Usage & Cost ──────────────────────────
+async function renderUsage() {
+  const data = await api('/api/admin/usage');
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">Kullanım & Maliyet</div>
+        <div class="page-subtitle">Müşteri bazlı kaynak tüketimi</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">ClickHouse</div>
+        <div class="stat-value">$${data.cost_estimate?.clickhouse || 0}</div>
+        <div class="stat-sub">/ay tahmini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Railway (Server)</div>
+        <div class="stat-value">$${data.cost_estimate?.railway || 0}</div>
+        <div class="stat-sub">/ay</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Neon (PostgreSQL)</div>
+        <div class="stat-value">$${data.cost_estimate?.neon || 0}</div>
+        <div class="stat-sub">/ay</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Toplam Maliyet</div>
+        <div class="stat-value" style="color:var(--accent)">$${data.cost_estimate?.total || 0}</div>
+        <div class="stat-sub">/ay tahmini</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Depolama Boyutu</div>
+      <table>
+        <thead><tr><th>Tablo</th><th>Boyut</th><th>Satır Sayısı</th></tr></thead>
+        <tbody>
+          ${(data.storage || []).map(s => `<tr><td>${s.table}</td><td>${s.disk_size}</td><td>${formatNum(s.total_rows)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Aylık Kullanım (Müşteri Bazlı)</div>
+      <table>
+        <thead><tr><th>Website</th><th>Ay</th><th>Event</th><th>Ziyaretçi</th><th>Pageview</th><th>Purchase</th></tr></thead>
+        <tbody>
+          ${(data.monthly_usage || []).map(u => `
+            <tr>
+              <td><strong>${u.website_id}</strong></td>
+              <td>${u.ay}</td>
+              <td>${formatNum(u.events)}</td>
+              <td>${formatNum(u.visitors)}</td>
+              <td>${formatNum(u.pageviews)}</td>
+              <td>${formatNum(u.purchases)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── System Health ─────────────────────────
+async function renderSystem() {
+  const data = await api('/api/admin/system');
+  const mem = data.server?.memory || {};
+  const mbUsed = Math.round((mem.heapUsed || 0) / 1024 / 1024);
+  const mbTotal = Math.round((mem.heapTotal || 0) / 1024 / 1024);
+  const uptimeH = Math.round((data.server?.uptime || 0) / 3600 * 10) / 10;
+
+  document.getElementById('content').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">Sistem Sağlığı</div>
+        <div class="page-subtitle">Tüm bileşenlerin durumu</div>
+      </div>
+      <button class="btn" onclick="showPage('system')">↻ Yenile</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Server</div>
+        <div class="stat-value" style="font-size:1.2rem"><span class="dot dot-green"></span> Çalışıyor</div>
+        <div class="stat-sub">Uptime: ${uptimeH} saat | RAM: ${mbUsed}/${mbTotal} MB</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">ClickHouse</div>
+        <div class="stat-value" style="font-size:1.2rem"><span class="dot ${data.clickhouse?.status === 'ok' ? 'dot-green' : 'dot-red'}"></span> ${data.clickhouse?.status === 'ok' ? 'Bağlı' : 'Hata'}</div>
+        <div class="stat-sub">${data.clickhouse?.tables || 0} tablo</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">PostgreSQL</div>
+        <div class="stat-value" style="font-size:1.2rem"><span class="dot ${data.postgres?.status === 'ok' ? 'dot-green' : 'dot-red'}"></span> ${data.postgres?.status === 'ok' ? 'Bağlı' : 'Hata'}</div>
+        <div class="stat-sub">${data.postgres?.websites || 0} website kayıtlı</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Buffer</div>
+        <div class="stat-value" style="font-size:1.2rem">${data.buffer?.eventCount || 0} event</div>
+        <div class="stat-sub">Raw: ${data.buffer?.rawEventCount || 0} | Bad: ${data.buffer?.badEventCount || 0}</div>
+      </div>
+    </div>
+
+    ${data.bad_event_rate ? `
+    <div class="card">
+      <div class="card-title">Son 1 Saat — Hata Oranı</div>
+      <div style="font-size:2rem;font-weight:700;color:${data.bad_event_rate.bad > 0 ? 'var(--red)' : 'var(--green)'}">
+        ${data.bad_event_rate.good > 0 ? ((data.bad_event_rate.bad / data.bad_event_rate.good) * 100).toFixed(2) : 0}%
+      </div>
+      <div class="stat-sub">${data.bad_event_rate.bad} hatalı / ${data.bad_event_rate.good} başarılı event</div>
+    </div>` : ''}
+  `;
+}
+
+// ─── Init ──────────────────────────────────
+showPage('overview');
+</script>
+
+</body>
+</html>

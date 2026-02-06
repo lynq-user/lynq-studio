@@ -1,0 +1,19 @@
+{
+  "name": "lynq-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "First-party web analytics platform",
+  "scripts": {
+    "dev:server": "cd apps/server && npm run dev",
+    "dev:tracker": "cd packages/tracker && npm run build:watch",
+    "build:tracker": "cd packages/tracker && npm run build",
+    "build:server": "cd apps/server && npm run build",
+    "db:setup": "cd apps/server && npm run db:setup",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "test": "echo 'Run tests per package'"
+  },
+  "keywords": ["analytics", "first-party", "clickhouse", "web-analytics"],
+  "author": "",
+  "license": "MIT"
+}

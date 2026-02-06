@@ -1,0 +1,12 @@
+{
+  "name": "@lynq/tracker",
+  "version": "0.1.0",
+  "description": "Lynq Studio JS Tracker — lightweight first-party analytics (<2KB)",
+  "main": "dist/lynq.min.js",
+  "scripts": {
+    "build": "node build.js",
+    "build:watch": "node build.js --watch"
+  },
+  "files": ["dist/"],
+  "license": "MIT"
+}

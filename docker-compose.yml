@@ -1,0 +1,79 @@
+# ──────────────────────────────────────────────
+# Lynq Studio — Docker Compose (Development)
+# ──────────────────────────────────────────────
+# Kullanım:
+#   docker compose up -d          → tüm servisleri başlat
+#   docker compose down           → durdur
+#   docker compose logs -f        → logları izle
+# ──────────────────────────────────────────────
+
+services:
+  # ─── ClickHouse (Analytics DB) ─────────────────
+  # Tüm event verileri burada saklanır.
+  # Columnar storage sayesinde analitik sorgular çok hızlıdır.
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    container_name: lynq-clickhouse
+    ports:
+      - "8123:8123"   # HTTP interface (sorgular için)
+      - "9000:9000"   # Native TCP interface
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./docker/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      CLICKHOUSE_DB: lynq_analytics
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ─── PostgreSQL (App DB) ───────────────────────
+  # Kullanıcı hesapları, website kayıtları, API key'ler,
+  # dashboard ayarları gibi uygulama verileri burada tutulur.
+  postgres:
+    image: postgres:16-alpine
+    container_name: lynq-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      POSTGRES_DB: lynq_app
+      POSTGRES_USER: lynq
+      POSTGRES_PASSWORD: lynq_dev_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lynq"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ─── Grafana (Dashboard — MVP) ─────────────────
+  # İlk aşamada dashboard olarak Grafana kullanılır.
+  # ClickHouse data source plugin'i ile doğrudan sorgu atılır.
+  grafana:
+    image: grafana/grafana-oss:11.0.0
+    container_name: lynq-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+volumes:
+  clickhouse-data:
+  postgres-data:
+  grafana-data:

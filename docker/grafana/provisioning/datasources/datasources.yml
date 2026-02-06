@@ -1,0 +1,15 @@
+# Grafana ClickHouse data source — otomatik provisioning
+apiVersion: 1
+
+datasources:
+  - name: Lynq ClickHouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      host: clickhouse
+      port: 9000
+      defaultDatabase: lynq_analytics
+      protocol: native
+      username: default
+    editable: true

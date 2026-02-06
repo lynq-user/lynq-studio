@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lynq Studio — Test Sayfası</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e5e5e5; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #fff; }
+    .subtitle { color: #888; margin-bottom: 2rem; }
+    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 1.1rem; margin-bottom: 0.5rem; color: #fff; }
+    .card p { color: #999; font-size: 0.9rem; }
+    button { background: #2563eb; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; margin: 0.25rem; }
+    button:hover { background: #1d4ed8; }
+    .log { background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem; margin-top: 1rem; font-family: monospace; font-size: 0.8rem; max-height: 300px; overflow-y: auto; }
+    .log-entry { padding: 0.25rem 0; border-bottom: 1px solid #222; }
+    .log-entry:last-child { border-bottom: none; }
+    .success { color: #22c55e; }
+    .info { color: #3b82f6; }
+    a { color: #3b82f6; }
+    .spacer { height: 200vh; } /* scroll depth test için */
+    .scroll-label { text-align: center; padding: 2rem; color: #555; }
+  </style>
+</head>
+<body>
+
+  <!--
+    Lynq Tracker — Test Sayfası
+    Bu sayfa tracker'ın doğru çalıştığını test etmek için kullanılır.
+    Tracker script'i en altta yüklenir.
+  -->
+
+  <div class="container">
+    <h1>Lynq Studio</h1>
+    <p class="subtitle">First-Party Analytics — Test Sayfası</p>
+
+    <div class="card">
+      <h2>Otomatik Yakalanan Event'ler</h2>
+      <p>Bu sayfa yüklendiğinde aşağıdaki event'ler otomatik olarak gönderilir:</p>
+      <ul style="margin-top: 0.5rem; padding-left: 1.5rem; color: #ccc;">
+        <li><code>session_start</code> — İlk ziyarette</li>
+        <li><code>page_view</code> — Her sayfa görüntülemede</li>
+        <li><code>scroll</code> — %25, %50, %75, %100 derinlikte</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Manuel Event Test</h2>
+      <p>Aşağıdaki butonlarla custom event gönderebilirsin:</p>
+      <div style="margin-top: 1rem;">
+        <button onclick="testEvent('button_click', { button: 'cta_primary' })">CTA Tıklama</button>
+        <button onclick="testEvent('signup_click', { plan: 'pro' })">Signup Tıklama</button>
+        <button onclick="testEvent('video_play', { video: 'demo', duration: 120 })">Video Oynat</button>
+        <button onclick="testEvent('purchase', { amount: 99, currency: 'TRY' })">Satın Alma</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>SPA Navigasyon Test</h2>
+      <p>History API ile route değişikliğini simüle et:</p>
+      <div style="margin-top: 1rem;">
+        <button onclick="navigateTo('/pricing')">→ /pricing</button>
+        <button onclick="navigateTo('/about')">→ /about</button>
+        <button onclick="navigateTo('/contact')">→ /contact</button>
+        <button onclick="navigateTo('/')">→ / (ana sayfa)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Event Log</h2>
+      <p>Gönderilen event'ler burada görünür:</p>
+      <div class="log" id="log">
+        <div class="log-entry info">Sayfa yüklendi, tracker başlatılıyor...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll depth test için uzun alan -->
+  <div class="spacer">
+    <div class="scroll-label" style="margin-top: 25vh;">↓ %25 Scroll Noktası</div>
+    <div class="scroll-label" style="margin-top: 25vh;">↓ %50 Scroll Noktası</div>
+    <div class="scroll-label" style="margin-top: 25vh;">↓ %75 Scroll Noktası</div>
+    <div class="scroll-label" style="margin-top: 10vh;">✓ %100 Scroll — Sayfanın Sonu</div>
+  </div>
+
+  <script>
+    // ─── Event Log Helper ───────────────────
+    function log(msg, type) {
+      var el = document.getElementById('log');
+      var entry = document.createElement('div');
+      entry.className = 'log-entry ' + (type || 'info');
+      entry.textContent = new Date().toLocaleTimeString() + ' — ' + msg;
+      el.appendChild(entry);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // ─── sendBeacon'ı intercept et (debug) ──
+    var origBeacon = navigator.sendBeacon;
+    navigator.sendBeacon = function(url, data) {
+      try {
+        var blob = data;
+        if (blob instanceof Blob) {
+          blob.text().then(function(text) {
+            var parsed = JSON.parse(text);
+            log(parsed.event_type + (parsed.event_name ? ':' + parsed.event_name : '') + ' → ' + url, 'success');
+          });
+        }
+      } catch(e) {}
+      return origBeacon.apply(this, arguments);
+    };
+
+    // ─── Manuel event gönder ────────────────
+    function testEvent(name, props) {
+      if (window.lynq) {
+        window.lynq.event(name, props);
+        log('Custom event: ' + name + ' ' + JSON.stringify(props), 'success');
+      } else {
+        log('Tracker henüz yüklenmedi!', 'error');
+      }
+    }
+
+    // ─── SPA navigasyon simülasyonu ─────────
+    function navigateTo(path) {
+      history.pushState({}, '', path);
+      log('SPA navigasyon: ' + path, 'info');
+    }
+  </script>
+
+  <!--
+    Lynq Tracker Script
+    data-website-id: Test website UUID'si (PostgreSQL'deki websites tablosu ile eşleşmeli)
+    data-endpoint: Collect endpoint URL'i
+  -->
+  <script defer
+    src="http://localhost:3000/t/lynq.js"
+    data-website-id="test-site-001"
+    data-endpoint="http://localhost:3000/api/collect">
+  </script>
+
+</body>
+</html>

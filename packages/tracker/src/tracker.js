@@ -22,9 +22,13 @@
   'use strict';
 
   // ─── Konfigürasyon ──────────────────────────
+  // 1. Önce window.__lynq config'i kontrol et (GTM uyumlu)
+  // 2. Yoksa script tag'ındaki data attribute'ları oku
+  var config = window.__lynq || {};
   var script = document.currentScript;
-  var websiteId = script.getAttribute('data-website-id');
-  var endpoint = script.getAttribute('data-endpoint') || '/api/collect';
+
+  var websiteId = config.websiteId || (script && script.getAttribute('data-website-id')) || '';
+  var endpoint = config.endpoint || (script && script.getAttribute('data-endpoint')) || '/api/collect';
 
   if (!websiteId) return; // website-id yoksa hiçbir şey yapma
 

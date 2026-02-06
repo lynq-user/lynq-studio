@@ -25,6 +25,7 @@ const { createPgPool } = require('./services/postgres');
 const { createBuffer } = require('./services/buffer');
 const { collectRoute } = require('./routes/collect');
 const { healthRoute } = require('./routes/health');
+const { adminRoute } = require('./routes/admin');
 
 async function start() {
   const app = Fastify({
@@ -83,6 +84,7 @@ async function start() {
   // ─── Routes ────────────────────────────────
   app.register(collectRoute);
   app.register(healthRoute);
+  app.register(adminRoute);
 
   // ─── Graceful Shutdown ─────────────────────
   // Kapanırken buffer'daki kalan event'leri flush et

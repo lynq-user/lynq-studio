@@ -229,40 +229,7 @@
 
   window.addEventListener('popstate', handleUrlChange);
 
-  // ─── Scroll Depth Tracking ──────────────────
-  // %25, %50, %75, %100 eşiklerinde tetiklenir
-  var scrollMarks = {};
-
-  function trackScroll() {
-    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    var docHeight = Math.max(
-      document.body.scrollHeight,
-      document.documentElement.scrollHeight
-    ) - window.innerHeight;
-
-    if (docHeight <= 0) return;
-
-    var percent = Math.round((scrollTop / docHeight) * 100);
-    var thresholds = [25, 50, 75, 100];
-
-    for (var i = 0; i < thresholds.length; i++) {
-      var t = thresholds[i];
-      if (percent >= t && !scrollMarks[t]) {
-        scrollMarks[t] = true;
-        send('scroll', '', { depth: t });
-      }
-    }
-  }
-
-  // Scroll'u throttle ile dinle (her 500ms'de bir)
-  var scrollTimer;
-  window.addEventListener('scroll', function () {
-    if (scrollTimer) return;
-    scrollTimer = setTimeout(function () {
-      scrollTimer = null;
-      trackScroll();
-    }, 500);
-  }, { passive: true });
+  // Scroll tracking kaldırıldı — event hacmini şişiriyor
 
   // ─── E-Commerce event isimleri ──────────────
   var ECOM_EVENTS = [

@@ -61,6 +61,13 @@ function validate(body) {
     language:      t(body.language, 20),
     timestamp:     body.timestamp || new Date().toISOString(),
 
+    // ─── Trafik kaynağı (session-level attribution) ──
+    utm_source:    t(body.utm_source, 100),
+    utm_medium:    t(body.utm_medium, 100),
+    utm_campaign:  t(body.utm_campaign, MAX_STRING),
+    utm_term:      t(body.utm_term, MAX_STRING),
+    utm_content:   t(body.utm_content, MAX_STRING),
+
     // ─── E-Commerce event-level parametreleri ──
     transaction_id:  t(body.transaction_id, MAX_STRING),
     affiliation:     t(body.affiliation, MAX_STRING),

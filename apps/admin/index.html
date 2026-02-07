@@ -193,8 +193,10 @@ async function renderOverview() {
     pageviews: acc.pageviews + parseInt(c.pageviews || 0),
     visitors: acc.visitors + parseInt(c.unique_visitors || 0),
     last5min: acc.last5min + parseInt(c.events_last_5min || 0),
-    last24h: acc.last24h + parseInt(c.events_last_24h || 0)
-  }), { events: 0, pageviews: 0, visitors: 0, last5min: 0, last24h: 0 }) || {};
+    last24h: acc.last24h + parseInt(c.events_last_24h || 0),
+    visitors30min: acc.visitors30min + parseInt(c.visitors_last_30min || 0),
+    events30min: acc.events30min + parseInt(c.events_last_30min || 0)
+  }), { events: 0, pageviews: 0, visitors: 0, last5min: 0, last24h: 0, visitors30min: 0, events30min: 0 }) || {};
 
   const chStatus = system.clickhouse?.status === 'ok';
   const pgStatus = system.postgres?.status === 'ok';
@@ -213,6 +215,11 @@ async function renderOverview() {
         <div class="stat-label">Aktif Şu An (5dk)</div>
         <div class="stat-value" style="color:var(--green)">${formatNum(totals.last5min)}</div>
         <div class="stat-sub">event / 5 dakika</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Aktif Şu An (30dk)</div>
+        <div class="stat-value" style="color:var(--blue)">${formatNum(totals.visitors30min)}</div>
+        <div class="stat-sub">${formatNum(totals.events30min)} event / 30 dakika</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Son 24 Saat</div>

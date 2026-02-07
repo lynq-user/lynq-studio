@@ -19,7 +19,9 @@ async function adminRoute(app) {
             max(timestamp) AS last_event,
             countIf(timestamp >= now() - INTERVAL 1 HOUR) AS events_last_hour,
             countIf(timestamp >= now() - INTERVAL 24 HOUR) AS events_last_24h,
-            countIf(timestamp >= now() - INTERVAL 5 MINUTE) AS events_last_5min
+            countIf(timestamp >= now() - INTERVAL 5 MINUTE) AS events_last_5min,
+            uniqExactIf(client_id, timestamp >= now() - INTERVAL 30 MINUTE) AS visitors_last_30min,
+            countIf(timestamp >= now() - INTERVAL 30 MINUTE) AS events_last_30min
           FROM lynq_analytics.events
           GROUP BY website_id
           ORDER BY total_events DESC

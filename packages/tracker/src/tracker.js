@@ -348,6 +348,9 @@
     }
   }
 
+  // ─── Kuyruğu kaydet (window.lynq üzerine yazılmadan önce) ──
+  var _pendingQueue = (window.lynq && window.lynq._q) ? window.lynq._q.slice() : [];
+
   // ─── Public API ─────────────────────────────
   window.lynq = {
     /**
@@ -385,22 +388,13 @@
   };
 
   // ─── Queue: Script yüklenmeden önce çağrılan event'leri işle ──
-  // GA4'ün gtag() ve Meta'nın fbq() ile aynı mantık.
-  // GTM tag'ları lynq.track() çağırdığında script henüz yüklenmemişse
-  // event'ler _q kuyruğunda birikir. Script yüklenince burada işlenir.
-  if (window.lynq && window.lynq._q && window.lynq._q.length > 0) {
-    var queue = window.lynq._q;
-    // Önce gerçek lynq objesini set et
-    var realLynq = window.lynq;
-    // Kuyruktaki event'leri işle
-    for (var qi = 0; qi < queue.length; qi++) {
-      var args = queue[qi];
+  if (_pendingQueue.length > 0) {
+    for (var qi = 0; qi < _pendingQueue.length; qi++) {
+      var args = _pendingQueue[qi];
       if (args && args.length > 0) {
         smartSend(args[0], args[1] || {});
       }
     }
-    // Kuyruğu temizle
-    window.lynq._q = [];
   }
 
   // ─── İlk sayfa görüntüleme ─────────────────

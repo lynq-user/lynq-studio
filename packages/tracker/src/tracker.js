@@ -100,15 +100,33 @@
       // Sonraki tüm event'lere bu ilk değerler eklenir.
       // Böylece purchase event'inde bile orijinal trafik kaynağını görürsün.
       var params = new URLSearchParams(location.search);
+      var src = params.get('utm_source') || '';
+      var med = params.get('utm_medium') || '';
+      var cam = params.get('utm_campaign') || '';
+
+      // Google Ads auto-tagging: gclid varsa utm_source/medium otomatik ata
+      var gclid = params.get('gclid') || '';
+      if (gclid && !src) { src = 'google'; med = med || 'cpc'; }
+
+      // Facebook/Meta Ads: fbclid varsa
+      var fbclid = params.get('fbclid') || '';
+      if (fbclid && !src) { src = src || 'facebook'; med = med || 'cpc'; }
+
+      // Microsoft/Bing Ads: msclkid varsa
+      var msclkid = params.get('msclkid') || '';
+      if (msclkid && !src) { src = 'bing'; med = med || 'cpc'; }
+
       var attribution = {
         ref: document.referrer || '',
-        src: params.get('utm_source') || '',
-        med: params.get('utm_medium') || '',
-        cam: params.get('utm_campaign') || '',
+        src: src,
+        med: med,
+        cam: cam,
         trm: params.get('utm_term') || '',
         cnt: params.get('utm_content') || '',
-        gclid: params.get('gclid') || '',
-        fbclid: params.get('fbclid') || '',
+        gclid: gclid,
+        fbclid: fbclid,
+        msclkid: msclkid,
+        gad_campaignid: params.get('gad_campaignid') || '',
         landing: location.pathname + location.search
       };
       sessionStorage.setItem('_lynq_attr', JSON.stringify(attribution));
